@@ -1,0 +1,19 @@
+{
+  "twitch": {
+    "ircHost": "irc.chat.twitch.tv",
+    "ircPort": 443,
+    "ircNickname": null,
+    "ircOauthPassword": null,
+    "apiClientId": null,
+    "apiOauthToken": null,
+    "apiRateLimit": 13.3,
+    "streamChannel": null
+  },
+  "mongodb": {
+    "host": null,
+    "port": 27017,
+    "database": null,
+    "user": null,
+    "password": null
+  }
+}
