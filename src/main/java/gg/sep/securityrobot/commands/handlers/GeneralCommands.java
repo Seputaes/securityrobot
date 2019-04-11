@@ -1,18 +1,14 @@
 package gg.sep.securityrobot.commands.handlers;
 
-import java.lang.reflect.Method;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import lombok.extern.log4j.Log4j2;
-import org.apache.commons.lang3.tuple.Pair;
 
 import gg.sep.securityrobot.SecurityRobot;
 import gg.sep.securityrobot.commands.ChatCommand;
+import gg.sep.securityrobot.commands.Command;
 import gg.sep.securityrobot.commands.CommandEvent;
-import gg.sep.securityrobot.commands.CommandHandler;
 import gg.sep.securityrobot.commands.CommandLevel;
 import gg.sep.securityrobot.commands.CommandRunner;
 import gg.sep.securityrobot.models.twitch.tmi.TwitchMessageAuthor;
@@ -22,14 +18,16 @@ import gg.sep.securityrobot.models.twitch.tmi.TwitchMessageAuthor;
  * TODO: These are work in progress and generally designed for testing while in development.
  */
 @Log4j2
-public class GeneralCommands implements CommandHandler {
+public final class GeneralCommands {
+
+    private GeneralCommands() { }
 
     /**
      * All users should be able to execute this command.
      * @param event Command event constructed from the chat message.
      */
     @ChatCommand(value = "all", level = CommandLevel.ALL)
-    public void all(final CommandEvent event) {
+    public static void all(final CommandEvent event) {
         event.getChannelMessage().getChannel().sendMessage("All Command");
     }
 
@@ -38,7 +36,7 @@ public class GeneralCommands implements CommandHandler {
      * @param event Command event constructed from the chat message.
      */
     @ChatCommand(value = "ping", level = CommandLevel.BROADCASTER)
-    public void ping(final CommandEvent event) {
+    public static void ping(final CommandEvent event) {
         final String pongMsg = String.format("@%s Pong!", event.getChannelMessage().getAuthor().getDisplayName());
         event.getChannelMessage().getChannel().sendMessage(pongMsg);
     }
@@ -47,8 +45,8 @@ public class GeneralCommands implements CommandHandler {
      * Should not reply at all since the command is disabled.
      * @param event Command event constructed from the chat message.
      */
-    @ChatCommand(value = "disabled", level = CommandLevel.DISABLED)
-    public void disabled(final CommandEvent event) {
+    @ChatCommand(value = "disabled", aliases = {"foo"}, level = CommandLevel.DISABLED)
+    public static void disabled(final CommandEvent event) {
         log.error("Error with DISABLED Command Level. This command should never be triggered");
         event.getChannelMessage().getChannel().sendMessage("ERROR: This command should have never been triggered.");
     }
@@ -58,20 +56,16 @@ public class GeneralCommands implements CommandHandler {
      * @param event Command event constructed from the chat message.
      */
     @ChatCommand(value = "commands", level = CommandLevel.ALL)
-    public void commands(final CommandEvent event) {
+    public static void commands(final CommandEvent event) {
         final CommandRunner commandRunner = event.getChannelMessage().getSecurityRobot().getCommandRunner();
         final TwitchMessageAuthor author = event.getChannelMessage().getAuthor();
 
-        final Set<String> commandList = new HashSet<>();
-        // find all the commands that the user can run
-        for (final Map.Entry<String, Pair<Method, CommandLevel>> command : commandRunner.getCommandList().entrySet()) {
-            if (command.getValue().getRight().userCanRun(author)) {
-                commandList.add(command.getKey());
-            }
-        }
+        final Set<Command> commandList = commandRunner.getCommandList().stream()
+            .filter(c -> !c.getName().equals("commands") && c.getLevel().userCanRun(author))
+            .collect(Collectors.toSet());
+
         final String commandString = commandList.stream()
-            .filter(c -> !c.equals("commands"))
-            .map(c -> SecurityRobot.COMMAND_PREFIX + c)
+            .map(c -> SecurityRobot.COMMAND_PREFIX + c.getName())
             .sorted()
             .collect(Collectors.joining(", "));
         event.getChannelMessage().getChannel().sendMessage(

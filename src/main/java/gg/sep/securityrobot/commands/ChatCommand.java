@@ -7,7 +7,6 @@ import java.lang.annotation.Target;
 
 /**
  * Method annotation for tagging methods to handle chat commands.
- * The class must also be annotated with {@link CommandHandler}.
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -19,10 +18,16 @@ public @interface ChatCommand {
     String value();
 
     /**
+     * Aliases of the command name.
+     * @return Aliases of the command.
+     */
+    String[] aliases() default {};
+
+    /**
      * Optional description of the command, which can be used in help messages. // TODO
      * @return Description of the command.
      */
-    String commandDescription() default "";
+    String description() default "";
 
     /**
      * Permission level associated with the command. User must hold one this level or higher to execute the command.

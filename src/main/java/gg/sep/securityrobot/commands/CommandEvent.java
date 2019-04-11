@@ -9,16 +9,16 @@ import gg.sep.securityrobot.models.twitch.tmi.TwitchChannelMessage;
  */
 public class CommandEvent {
 
-    @Getter private String name;
+    @Getter private Command command;
     @Getter private TwitchChannelMessage channelMessage;
 
     /**
      * Construct the Command Event with the name of the command and the Twitch chat message which triggered the command.
-     * @param name Name of the command (text after the prefix)
+     * @param command The command which is tied to the message.
      * @param message Twitch Chat message which triggered the command.
      */
-    public CommandEvent(final String name, final TwitchChannelMessage message) {
-        this.name = name;
+    public CommandEvent(final Command command, final TwitchChannelMessage message) {
+        this.command = command;
         this.channelMessage = message;
     }
 }

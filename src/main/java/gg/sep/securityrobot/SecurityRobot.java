@@ -13,7 +13,6 @@ import gg.sep.securityrobot.exceptions.SecurityRobotFatal;
 import gg.sep.securityrobot.listeners.CommandListener;
 import gg.sep.securityrobot.listeners.JoinPartListener;
 import gg.sep.securityrobot.listeners.LoggingListener;
-import gg.sep.securityrobot.utils.IRCUtils;
 import gg.sep.twitchapi.TwitchAPI;
 
 /**
@@ -76,7 +75,7 @@ public class SecurityRobot {
      * @param ircClient IRC client on which to join the channels.
      */
     private void joinInitialChannels(final Client ircClient) {
-        ircClient.addChannel(IRCUtils.ircify(this.getConfig().getTwitch().getStreamChannel()));
+        // ircClient.addChannel(IRCUtils.ircify(this.getConfig().getTwitch().getStreamChannel()));
         ircClient.addChannel("#securityrobot");
     }
 
