@@ -30,8 +30,20 @@ public @interface ChatCommand {
     String description() default "";
 
     /**
+     * Determines if the command will show up in the "commands" list.
+     * @return Whether the command should show up in the commands list.
+     */
+    boolean showInCommandList() default true;
+
+    /**
      * Permission level associated with the command. User must hold one this level or higher to execute the command.
      * @return Command level associated with the command
      */
     CommandLevel level() default CommandLevel.ALL;
+
+    /**
+     * Number of seconds between each invocation of the command.
+     * @return Number of seconds in between each invocation of the command.
+     */
+    int cooldown() default 0;
 }

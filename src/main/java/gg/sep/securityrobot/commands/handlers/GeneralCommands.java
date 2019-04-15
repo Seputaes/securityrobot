@@ -1,8 +1,10 @@
 package gg.sep.securityrobot.commands.handlers;
 
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import lombok.experimental.UtilityClass;
 import lombok.extern.log4j.Log4j2;
 
 import gg.sep.securityrobot.SecurityRobot;
@@ -18,57 +20,78 @@ import gg.sep.securityrobot.models.twitch.tmi.TwitchMessageAuthor;
  * TODO: These are work in progress and generally designed for testing while in development.
  */
 @Log4j2
-public final class GeneralCommands {
-
-    private GeneralCommands() { }
+@UtilityClass
+public class GeneralCommands {
 
     /**
      * All users should be able to execute this command.
      * @param event Command event constructed from the chat message.
      */
-    @ChatCommand(value = "all", level = CommandLevel.ALL)
+    @ChatCommand(value = "all", description = "all desc", level = CommandLevel.ALL, cooldown = 10)
     public static void all(final CommandEvent event) {
-        event.getChannelMessage().getChannel().sendMessage("All Command");
+        event.reply("All command");
     }
 
     /**
      * Replies "Pong!" if the command author is the channel's broadcaster.
      * @param event Command event constructed from the chat message.
      */
-    @ChatCommand(value = "ping", level = CommandLevel.BROADCASTER)
+    @ChatCommand(value = "ping", aliases = {"foo", "bar"}, description = "ping desc", level = CommandLevel.BROADCASTER)
     public static void ping(final CommandEvent event) {
-        final String pongMsg = String.format("@%s Pong!", event.getChannelMessage().getAuthor().getDisplayName());
-        event.getChannelMessage().getChannel().sendMessage(pongMsg);
+        event.mention("Pong!");
     }
 
     /**
      * Should not reply at all since the command is disabled.
      * @param event Command event constructed from the chat message.
      */
-    @ChatCommand(value = "disabled", aliases = {"foo"}, level = CommandLevel.DISABLED)
+    @ChatCommand(value = "disabled", level = CommandLevel.DISABLED)
     public static void disabled(final CommandEvent event) {
         log.error("Error with DISABLED Command Level. This command should never be triggered");
-        event.getChannelMessage().getChannel().sendMessage("ERROR: This command should have never been triggered.");
+        event.reply("ERROR: This command should have never been triggered.");
     }
 
     /**
      * Prints out a list of all commands that the user can run.
      * @param event Command event constructed from the chat message.
      */
-    @ChatCommand(value = "commands", level = CommandLevel.ALL)
+    @ChatCommand(value = "commands", description = "Lists the commands that you have access to run",
+        level = CommandLevel.ALL, showInCommandList = false)
     public static void commands(final CommandEvent event) {
         final CommandRunner commandRunner = event.getChannelMessage().getSecurityRobot().getCommandRunner();
         final TwitchMessageAuthor author = event.getChannelMessage().getAuthor();
 
-        final Set<Command> commandList = commandRunner.getCommandList().stream()
-            .filter(c -> !c.getName().equals("commands") && c.getLevel().userCanRun(author))
+        final Set<Command> commandSet = commandRunner.getCommandSet().stream()
+            .filter(Command::isShownInCommandList)
             .collect(Collectors.toSet());
 
-        final String commandString = commandList.stream()
+        final String commandString = commandSet.stream()
             .map(c -> SecurityRobot.COMMAND_PREFIX + c.getName())
             .sorted()
             .collect(Collectors.joining(", "));
-        event.getChannelMessage().getChannel().sendMessage(
-            String.format("@%s: %s", author.getDisplayName(), commandString));
+        event.mention(commandString);
+    }
+
+    /**
+     * Replies with the help message for the given command.
+     * @param event Command event constructed from the chat message.
+     */
+    @ChatCommand(value = "help", description = "help command desc", level = CommandLevel.ALL)
+    public static void help(final CommandEvent event) {
+        final Optional<String> commandName = event.getCommandText();
+        final TwitchMessageAuthor author = event.getChannelMessage().getAuthor();
+        if (commandName.isEmpty()) {
+            event.mention("You need to specify a command!");
+            return;
+        }
+
+        final Command command = event.getCommandRunner().getCommandMap().get(commandName.get());
+        if (command != null) {
+            if (author.canRunCommandLevel(command.getLevel())) {
+                event.mention(command.getHelp());
+            }
+        } else {
+            event.mention("That command was not found.");
+        }
     }
 }

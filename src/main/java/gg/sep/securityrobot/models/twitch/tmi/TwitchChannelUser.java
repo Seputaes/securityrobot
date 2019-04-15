@@ -48,6 +48,13 @@ public interface TwitchChannelUser {
     String getColor();
 
     /**
+     * Returns {@code true} if the user is also the owner of the bot, as specified in the config.
+     * @return {@code true} if the user is also the owner of the bot,
+     *         {@code false} otherwise.
+     */
+    boolean isBotOwner();
+
+    /**
      * Returns <code>true</code> if the user is also the broadcaster of the channel.
      * @return <code>true></code> if the user is also the broadcaster of the channel,
      *         <code>false</code> otherwise.

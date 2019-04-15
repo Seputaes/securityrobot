@@ -29,4 +29,10 @@ public interface TwitchIRCUser {
      *         <code>false</code> otherwise.
      */
     boolean isTurbo();
+
+    /**
+     * Returns the user's {@link TwitchIRCUser#getDisplayName()} prefixed with '@' so they are mentioned.
+     * @return Returns the user's display name prefixed with '@' so they are mentioned.
+     */
+    String getMention();
 }

@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.google.common.base.Objects;
+import com.google.common.base.Stopwatch;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -23,6 +24,10 @@ public class Command {
     private Set<String> aliases;
     private Method method;
     private CommandLevel level;
+    private boolean shownInCommandList;
+    private int cooldown;
+
+    private Stopwatch lastExecuted; // TODO: There has to be a better way to do this.
 
     /**
      * Builder class for the command, with custom alias handling.
@@ -83,6 +88,26 @@ public class Command {
     }
 
     /**
+     * Gets the help text for this command.
+     * @return The help text for this command.
+     */
+    public String getHelp() {
+        return this.description;
+    }
+
+    /**
+     * Checks whether the time between the last command execution and now has elapsed.
+     * @return Whether the cooldown has expired.
+     */
+    public boolean cooldownElapsed() {
+        if (!lastExecuted.isRunning()) {
+            lastExecuted.start();
+            return true;
+        }
+        return lastExecuted.elapsed().toSeconds() >= cooldown;
+    }
+
+    /**
      * Returns <code>true</code> if this Command handles the extracted command string from a Twitch Message.
      * @param commandStr Extracted command string (without the prefix) in the message.
      * @return <code>true</code> if this Command handles the extracted command string;
@@ -90,6 +115,16 @@ public class Command {
      */
     public boolean handlesCommand(final String commandStr) {
         return this.name.equalsIgnoreCase(commandStr) || this.aliases.stream().anyMatch(commandStr::equalsIgnoreCase);
+    }
+
+    /**
+     * Returns all possible trigger strings for a command (name and aliases).
+     * @return All possible trigger strings for a command.
+     */
+    public Set<String> getTriggerStrings() {
+        final Set<String> thisAliases = new HashSet<>(this.aliases);
+        thisAliases.add(this.getName());
+        return thisAliases;
     }
 
     /**
@@ -102,9 +137,12 @@ public class Command {
         return Command.builder()
             .name(annotation.value())
             .aliases(annotation.aliases())
+            .shownInCommandList(annotation.showInCommandList())
             .method(method)
             .description(annotation.description())
             .level(annotation.level())
+            .cooldown(annotation.cooldown())
+            .lastExecuted(Stopwatch.createUnstarted())
             .build();
     }
 

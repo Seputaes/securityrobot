@@ -3,8 +3,10 @@ package gg.sep.securityrobot.commands;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,7 +30,12 @@ import gg.sep.securityrobot.models.twitch.tmi.TwitchMessageAuthor;
 public class CommandRunner {
 
     @Getter
-    private Set<Command> commandList = new HashSet<>();
+    private Set<Command> commandSet = new HashSet<>();
+
+    @Getter
+    private Map<String, Command> commandMap = new HashMap<>();
+
+    private final SecurityRobot securityRobot;
 
     /**
      * Construct an instance for the specified Bot class.
@@ -38,6 +45,7 @@ public class CommandRunner {
      * @throws SecurityRobotFatal Exception thrown if duplicate commands are found while initializing.
      */
     public CommandRunner(final SecurityRobot bot) throws SecurityRobotFatal {
+        this.securityRobot = bot;
         final Reflections reflections = new Reflections(bot.getClass().getPackageName(),
             new MethodAnnotationsScanner());
 
@@ -45,7 +53,11 @@ public class CommandRunner {
 
         for (final Method method : annotatedMethods) {
             final Optional<ChatCommand> annotation = checkValidCommand(bot, method);
-            annotation.ifPresent(a -> commandList.add(Command.fromAnnotation(a, method)));
+            annotation.ifPresent(a -> {
+                final Command command = Command.fromAnnotation(a, method);
+                command.getTriggerStrings().forEach(s -> commandMap.put(s, command));
+                commandSet.add(Command.fromAnnotation(a, method));
+            });
         }
     }
 
@@ -58,7 +70,7 @@ public class CommandRunner {
      */
     public void parseCommand(final TwitchChannelMessage message) {
         final Optional<Command> command = extractCommand(message);
-        command.ifPresent(com -> dispatchCommand(new CommandEvent(com, message)));
+        command.ifPresent(com -> dispatchCommand(new CommandEvent(this.securityRobot, com, this, message)));
     }
 
     private Optional<Command> extractCommand(final TwitchChannelMessage message) {
@@ -70,25 +82,17 @@ public class CommandRunner {
         if (splitMsg.length > 0) {
             final String commandStr = splitMsg[0]
                 .replaceFirst("\\" + SecurityRobot.COMMAND_PREFIX, "")
-                .trim();
-
-            for (final Command botCommand : commandList) {
-                if (botCommand.handlesCommand(commandStr)) {
-                    return Optional.of(botCommand);
-                }
-            }
+                .trim().toLowerCase();
+            return Optional.ofNullable(commandMap.get(commandStr));
         }
         return Optional.empty();
     }
 
-
     private void dispatchCommand(final CommandEvent event) {
-
-        final TwitchMessageAuthor author = event.getChannelMessage().getAuthor();
-
-        if (author.canRunCommandLevel(event.getCommand().getLevel())) {
+        if (commandCanRun(event)) {
             try {
                 event.getCommand().getMethod().invoke(null, event);
+                event.getCommand().getLastExecuted().reset().start();
             } catch (final ReflectiveOperationException e) {
                 log.error(e);
             }
@@ -110,7 +114,7 @@ public class CommandRunner {
             shutdownAndThrow(bot, reason);
         }
 
-        for (final Command existingCommand : commandList) {
+        for (final Command existingCommand : commandSet) {
             if (existingCommand.isDuplicate(newCommand)) {
                 final String reason = String.format(
                     "Command with name '%s' assigned to more than one method. Already assigned to: %s:%s(%s)",
@@ -122,6 +126,13 @@ public class CommandRunner {
             }
         }
         return Optional.of(annotation);
+    }
+
+    private boolean commandCanRun(final CommandEvent event) {
+        final TwitchMessageAuthor author = event.getChannelMessage().getAuthor();
+        final Command command = event.getCommand();
+
+        return author.canRunCommandLevel(event.getCommand().getLevel()) && command.cooldownElapsed();
     }
 
     private static String getMethodSignature(final Method method) {

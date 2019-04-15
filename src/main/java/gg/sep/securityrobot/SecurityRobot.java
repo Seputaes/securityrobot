@@ -1,18 +1,26 @@
 package gg.sep.securityrobot;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import org.kitteh.irc.client.library.Client;
 import org.kitteh.irc.client.library.feature.twitch.TwitchSupport;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 import gg.sep.securityrobot.commands.CommandRunner;
 import gg.sep.securityrobot.config.ConfigLoader;
 import gg.sep.securityrobot.config.models.ApplicationConfig;
+import gg.sep.securityrobot.config.models.RedisConfig;
 import gg.sep.securityrobot.db.MongoWrapper;
 import gg.sep.securityrobot.exceptions.SecurityRobotFatal;
 import gg.sep.securityrobot.listeners.CommandListener;
 import gg.sep.securityrobot.listeners.JoinPartListener;
 import gg.sep.securityrobot.listeners.LoggingListener;
+import gg.sep.securityrobot.utils.IRCUtils;
 import gg.sep.twitchapi.TwitchAPI;
 
 /**
@@ -20,12 +28,14 @@ import gg.sep.twitchapi.TwitchAPI;
  */
 @Log4j2
 public class SecurityRobot {
+    public static final String REDIS_PREFIX = "securityrobot:";
     public static final String COMMAND_PREFIX = "+";
     @Getter private final ApplicationConfig config;
     @Getter private SecurityRobotClient securityRobotClient;
     @Getter private TwitchAPI twitchAPI;
     @Getter private MongoWrapper mongoWrapper;
     @Getter private CommandRunner commandRunner;
+    @Getter private JedisPool jedisPool;
 
     /**
      * Creates a new instance of SecurityRobot and loads all instance variables.
@@ -35,6 +45,7 @@ public class SecurityRobot {
 
         initTwitchAPI();
         this.mongoWrapper = new MongoWrapper(this.config.getMongodb());
+        this.jedisPool = initJedisPool();
     }
 
     /**
@@ -42,9 +53,9 @@ public class SecurityRobot {
      * @throws SecurityRobotFatal Exception indicating that the bot cannot proceed and will shut down.
      */
     public void start() throws SecurityRobotFatal {
-        this.securityRobotClient = new SecurityRobotClient(buildIrcClient());
+        this.securityRobotClient = new SecurityRobotClient(this, buildIrcClient());
         addListeners();
-        joinInitialChannels(this.securityRobotClient.getIrcClient());
+        joinInitialChannels();
         this.commandRunner = new CommandRunner(this);
     }
 
@@ -72,11 +83,16 @@ public class SecurityRobot {
 
     /**
      * Joints all initial channels.
-     * @param ircClient IRC client on which to join the channels.
      */
-    private void joinInitialChannels(final Client ircClient) {
-        // ircClient.addChannel(IRCUtils.ircify(this.getConfig().getTwitch().getStreamChannel()));
-        ircClient.addChannel("#securityrobot");
+    private void joinInitialChannels() {
+        final Set<String> initialChannels = new HashSet<>();
+        initialChannels.add(IRCUtils.ircify((getConfig().getTwitch().getIrcNickname()))); // always join the bots own channel
+
+        try (Jedis jedis = this.jedisPool.getResource()) {
+            final Set<String> activeChannels = jedis.smembers(REDIS_PREFIX + "added_channels");
+            activeChannels.forEach(c -> initialChannels.add(IRCUtils.ircify(c)));
+        }
+        initialChannels.forEach(c -> securityRobotClient.joinChannel(c, false));
     }
 
     /**
@@ -91,6 +107,14 @@ public class SecurityRobot {
 
         securityRobotClient.getIrcClient().getEventManager()
             .registerEventListener(new LoggingListener(this, this.mongoWrapper.getMongoClient().getDatabase("beastielogs")));
+    }
+
+    private JedisPool initJedisPool() {
+        final int defaultJedisTimeout = 2000;
+        final JedisPoolConfig poolConfig = new JedisPoolConfig();
+        final RedisConfig redisConfig = this.getConfig().getRedis();
+        return new JedisPool(poolConfig, redisConfig.getHost(), redisConfig.getPort(),
+            defaultJedisTimeout, redisConfig.getPassword());
     }
 
     /**

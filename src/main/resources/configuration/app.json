@@ -1,4 +1,5 @@
 {
+  "botOwnerId": null,
   "twitch": {
     "ircHost": "irc.chat.twitch.tv",
     "ircPort": 443,
@@ -14,6 +15,11 @@
     "port": 27017,
     "database": null,
     "user": null,
+    "password": null
+  },
+  "redis": {
+    "host": null,
+    "port": 6379,
     "password": null
   }
 }

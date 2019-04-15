@@ -30,6 +30,7 @@ public final class TwitchMessageAuthor implements TwitchIRCUser, TwitchChannelUs
     private String userName;
     private String displayName;
     private boolean isTurbo;
+    private String mention;
 
     // Channel User fields
     private Channel channel;
@@ -53,6 +54,7 @@ public final class TwitchMessageAuthor implements TwitchIRCUser, TwitchChannelUs
         this.userId = tagMap.get("user-id");
         this.userName = channelMessage.getEvent().getActor().getNick();
         this.displayName = tagMap.get("display-name");
+        this.mention = "@" + this.displayName;
         this.isTurbo = "1".equals(tagMap.get("turbo"));
         this.isMod = "1".equals(tagMap.get("mod"));
         this.isSub = "1".equals(tagMap.get("subscriber"));
@@ -60,6 +62,13 @@ public final class TwitchMessageAuthor implements TwitchIRCUser, TwitchChannelUs
         this.color = tagMap.get("color");  // TODO: Implement this as non-string;
 
         this.badges = parseBadges(channelMessage.getServerMessage());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isBotOwner() {
+        return this.getUserId().equals(securityRobot.getConfig().getBotOwnerId());
     }
 
     /**
@@ -81,8 +90,8 @@ public final class TwitchMessageAuthor implements TwitchIRCUser, TwitchChannelUs
      *         <code>false</code> otherwise.
      */
     public boolean isFollower() {
-        return channelMessage.getSecurityRobot().getTwitchAPI().getUsersAPI()
-            .userIsFollowing(this.getUserId(), channelMessage.getRoomId());
+        return getSecurityRobot().getTwitchAPI().getHelix().getUsersAPI()
+            .getFollowsAPI().userIsFollowing(this.getUserId(), channelMessage.getRoomId());
     }
 
     /**

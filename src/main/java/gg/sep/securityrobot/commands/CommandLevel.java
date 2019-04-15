@@ -13,7 +13,8 @@ public enum CommandLevel {
     FOLLOWER(100),
     SUB(200),
     MOD(300),
-    BROADCASTER(Double.MAX_VALUE),
+    BROADCASTER(9001),
+    BOT_OWNER(Double.MAX_VALUE),
     DISABLED(Double.POSITIVE_INFINITY);
 
     @Getter
@@ -42,7 +43,9 @@ public enum CommandLevel {
      * @return The double value of a channel user's level.
      */
     public static double getCommandLevel(final TwitchChannelUser user) {
-        if (user.isBroadcaster()) {
+        if (user.isBotOwner()) {
+            return CommandLevel.BOT_OWNER.getLevel();
+        } else if (user.isBroadcaster()) {
             return CommandLevel.BROADCASTER.getLevel();
         } else if (user.isMod()) {
             return CommandLevel.MOD.getLevel();

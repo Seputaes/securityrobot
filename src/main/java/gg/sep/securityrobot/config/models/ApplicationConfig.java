@@ -7,6 +7,8 @@ import lombok.Getter;
  */
 @Getter
 public class ApplicationConfig {
+    private String botOwnerId;
     private TwitchConfig twitch;
     private MongoDBConfig mongodb;
+    private RedisConfig redis;
 }

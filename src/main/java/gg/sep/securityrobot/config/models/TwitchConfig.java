@@ -1,6 +1,7 @@
 package gg.sep.securityrobot.config.models;
 
 import lombok.Getter;
+import redis.clients.jedis.JedisPool;
 
 import gg.sep.twitchapi.TwitchAPI;
 import gg.sep.twitchapi.TwitchAPIConfig;
@@ -27,7 +28,7 @@ public class TwitchConfig {
         return TwitchAPIConfig.builder()
             .apiRateLimit(apiRateLimit)
             .clientId(apiClientId)
-            .oauthToken(apiOauthToken)
+            .jedisPool(new JedisPool())
             .login(ircNickname.toLowerCase())
             .build();
     }
