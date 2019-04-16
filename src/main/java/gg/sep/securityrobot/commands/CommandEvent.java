@@ -17,7 +17,7 @@ import gg.sep.securityrobot.models.twitch.tmi.TwitchChannelMessage;
 public class CommandEvent {
     private SecurityRobot securityRobot;
     private Command command;
-    private CommandRunner commandRunner;
+    private CommandManager commandManager;
     private TwitchChannelMessage channelMessage;
 
     /**

@@ -5,6 +5,7 @@ import net.engio.mbassy.listener.Handler;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
 
 import gg.sep.securityrobot.SecurityRobot;
+import gg.sep.securityrobot.commands.CommandManager;
 import gg.sep.securityrobot.models.twitch.tmi.TwitchChannelMessage;
 
 /**
@@ -28,7 +29,7 @@ public class CommandListener {
      * Receives all channel message events and determines whether the message has the bot's command prefix.
      *
      * If the message is prefixed, the message is sent over to the
-     * {@link gg.sep.securityrobot.commands.CommandRunner#parseCommand(TwitchChannelMessage)} method to verify
+     * {@link CommandManager#parseCommand(TwitchChannelMessage)} method to verify
      * and dispatch/invoke the command.
      * @param event Raw Kitteh channel message event.
      */
@@ -38,7 +39,7 @@ public class CommandListener {
         System.out.println(message.getMessageTime());
 
         if (message.getMessage().startsWith(getPrefix())) {
-            securityRobot.getCommandRunner().parseCommand(message);
+            securityRobot.getCommandManager().parseCommand(message);
         }
     }
 

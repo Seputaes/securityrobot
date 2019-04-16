@@ -12,6 +12,8 @@ import com.google.common.base.Stopwatch;
 import lombok.Builder;
 import lombok.Getter;
 
+import gg.sep.securityrobot.commands.handlers.custom.CustomCommandMetadata;
+
 /**
  * Model of a bot command with builder.
  */
@@ -22,6 +24,8 @@ public class Command {
     private String name;
     private String description;
     private Set<String> aliases;
+    private boolean isCustom;
+    private CustomCommandMetadata customMetadata;
     private Method method;
     private CommandLevel level;
     private boolean shownInCommandList;
@@ -139,6 +143,8 @@ public class Command {
             .aliases(annotation.aliases())
             .shownInCommandList(annotation.showInCommandList())
             .method(method)
+            .isCustom(false)
+            .customMetadata(null)
             .description(annotation.description())
             .level(annotation.level())
             .cooldown(annotation.cooldown())
@@ -147,6 +153,26 @@ public class Command {
     }
 
     /**
+     * Build a custom command from its metadata.
+     * @param metadata Metadata of the custom command.
+     * @return Built command.
+     */
+    public static Command fromCommandMetadata(final CustomCommandMetadata metadata) {
+        return Command.builder()
+            .name(metadata.getCommandName())
+            .aliases(metadata.getAliases())
+            .shownInCommandList(metadata.isShownInCommandList())
+            .method(null)
+            .isCustom(true)
+            .customMetadata(metadata)
+            .description(metadata.getDescription())
+            .level(CommandLevel.parseRequiredLevelString(String.valueOf(metadata.getLevel())))
+            .cooldown((int) metadata.getCooldown())
+            .lastExecuted(Stopwatch.createUnstarted())
+            .build();
+    }
+
+                                              /**
      * Checks if a command has duplicate command name or aliases.
      * @param other Other command to compare to this one.
      * @return <code>true</code> if the other command has a command name or alias which

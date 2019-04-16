@@ -11,7 +11,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
-import gg.sep.securityrobot.commands.CommandRunner;
+import gg.sep.securityrobot.commands.CommandManager;
 import gg.sep.securityrobot.config.ConfigLoader;
 import gg.sep.securityrobot.config.models.ApplicationConfig;
 import gg.sep.securityrobot.config.models.RedisConfig;
@@ -34,7 +34,7 @@ public class SecurityRobot {
     @Getter private SecurityRobotClient securityRobotClient;
     @Getter private TwitchAPI twitchAPI;
     @Getter private MongoWrapper mongoWrapper;
-    @Getter private CommandRunner commandRunner;
+    @Getter private CommandManager commandManager;
     @Getter private JedisPool jedisPool;
 
     /**
@@ -56,7 +56,7 @@ public class SecurityRobot {
         this.securityRobotClient = new SecurityRobotClient(this, buildIrcClient());
         addListeners();
         joinInitialChannels();
-        this.commandRunner = new CommandRunner(this);
+        this.commandManager = new CommandManager(this);
     }
 
     /**

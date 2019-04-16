@@ -1,7 +1,9 @@
 package gg.sep.securityrobot.exceptions;
 
+import gg.sep.securityrobot.commands.CommandManager;
+
 /**
- * Fatal exception thrown when the {@link gg.sep.securityrobot.commands.CommandRunner} detects duplicate commands.
+ * Fatal exception thrown when the {@link CommandManager} detects duplicate commands.
  */
 public class DuplicateCommandException extends SecurityRobotFatal {
     /**

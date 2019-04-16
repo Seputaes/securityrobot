@@ -84,4 +84,66 @@ public class OwnerCommands {
             }
         }
     }
+
+    /**
+     * Add or remove a global custom command.
+     *
+     * Syntax: [p]globalcom add|del commandName [response string]
+     * Response string is required if the action is "add."
+     * @param event Command event which triggered the command.
+     */
+    @ChatCommand(value = "globalcom", level = CommandLevel.BOT_OWNER, showInCommandList = false)
+    public static void globalcom(final CommandEvent event) {
+        final Optional<String> commandText = event.getCommandText();
+
+        // check the action syntax first
+        if (commandText.isEmpty() || commandText.get().split(" ", 2).length < 2) {
+            event.mention("Invalid custom command format");
+            return;
+        }
+
+        final String[] splitCommand = commandText.get().split(" ", 2);
+        final String actionString = splitCommand[0];
+
+        final Optional<Boolean> action = getGlobalCommandAction(actionString);
+
+        if (action.isEmpty()) {
+            event.mention(String.format("\"%s\" is not a valid action for globalcom", actionString));
+            return;
+        }
+
+        if (action.get()) {
+            final String[] addSplit = splitCommand[1].split(" ", 2);
+            if (addSplit.length < 2) {
+                event.mention("Invalid format for command add.");
+                return;
+            }
+            final String commandName = addSplit[0];
+            final String response = addSplit[1];
+
+            event.getSecurityRobot().getCommandManager()
+                .addCustomCommand(commandName, response, CommandLevel.ALL.getLevel());
+            event.mention("Added command: " + commandName);
+
+        } else {
+            final String[] removeSplit = splitCommand[1].split(" ", 1);
+            if (removeSplit.length < 1) {
+                event.mention("Invalid format for split command");
+                return;
+            }
+            final String commandName = removeSplit[0];
+            event.getSecurityRobot().getCommandManager()
+                .delCustomCommand(commandName);
+            event.mention("Removed command: " + commandName);
+        }
+    }
+
+    private Optional<Boolean> getGlobalCommandAction(final String action) {
+        if ("add".equalsIgnoreCase(action)) {
+            return Optional.of(true);
+        } else if ("del".equalsIgnoreCase(action)) {
+            return Optional.of(false);
+        }
+        return Optional.empty();
+    }
 }

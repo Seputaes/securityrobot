@@ -12,7 +12,7 @@ import gg.sep.securityrobot.commands.ChatCommand;
 import gg.sep.securityrobot.commands.Command;
 import gg.sep.securityrobot.commands.CommandEvent;
 import gg.sep.securityrobot.commands.CommandLevel;
-import gg.sep.securityrobot.commands.CommandRunner;
+import gg.sep.securityrobot.commands.CommandManager;
 import gg.sep.securityrobot.models.twitch.tmi.TwitchMessageAuthor;
 
 /**
@@ -58,10 +58,10 @@ public class GeneralCommands {
     @ChatCommand(value = "commands", description = "Lists the commands that you have access to run",
         level = CommandLevel.ALL, showInCommandList = false)
     public static void commands(final CommandEvent event) {
-        final CommandRunner commandRunner = event.getChannelMessage().getSecurityRobot().getCommandRunner();
+        final CommandManager commandManager = event.getChannelMessage().getSecurityRobot().getCommandManager();
         final TwitchMessageAuthor author = event.getChannelMessage().getAuthor();
 
-        final Set<Command> commandSet = commandRunner.getCommandSet().stream()
+        final Set<Command> commandSet = commandManager.getAllCommands().stream()
             .filter(Command::isShownInCommandList)
             .collect(Collectors.toSet());
 
@@ -85,7 +85,7 @@ public class GeneralCommands {
             return;
         }
 
-        final Command command = event.getCommandRunner().getCommandMap().get(commandName.get());
+        final Command command = event.getCommandManager().getCommandTriggers().get(commandName.get());
         if (command != null) {
             if (author.canRunCommandLevel(command.getLevel())) {
                 event.mention(command.getHelp());
