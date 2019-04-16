@@ -3,6 +3,7 @@ package gg.sep.securityrobot;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,6 +37,8 @@ public final class Main {
      * @throws Exception Fatal exception thrown indicating the bot cannot proceed and will exit.
      */
     public static void main(final String[] args) throws Exception {
+        final List<String> list1 = new LinkedList<>();
+
         final SecurityRobot securityRobot = new SecurityRobot();
         securityRobot.start();
 

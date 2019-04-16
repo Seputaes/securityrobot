@@ -1,5 +1,7 @@
 package gg.sep.securityrobot.commands.handlers;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import lombok.experimental.UtilityClass;
@@ -8,6 +10,7 @@ import lombok.extern.log4j.Log4j2;
 import gg.sep.securityrobot.commands.ChatCommand;
 import gg.sep.securityrobot.commands.CommandEvent;
 import gg.sep.securityrobot.commands.CommandLevel;
+import gg.sep.securityrobot.utils.CommandUtils;
 import gg.sep.twitchapi.helix.model.user.User;
 
 /**
@@ -80,70 +83,66 @@ public class OwnerCommands {
                     event.mention(String.format("Leaving channel: %s", userLogin));
                 }
             } else {
-                event.mention("That user was not identified as a valid channel/user.");
+                event.errorMention("That user was not identified as a valid channel/user.");
             }
         }
     }
 
     /**
-     * Add or remove a global custom command.
+     * Removes a global custom command.
      *
-     * Syntax: [p]globalcom add|del commandName [response string]
-     * Response string is required if the action is "add."
+     * Syntax: [p]globalcom del {commandName}
      * @param event Command event which triggered the command.
      */
-    @ChatCommand(value = "globalcom", level = CommandLevel.BOT_OWNER, showInCommandList = false)
-    public static void globalcom(final CommandEvent event) {
-        final Optional<String> commandText = event.getCommandText();
+    @ChatCommand(value = "globalcom del", aliases = "deletethisshit", level = CommandLevel.BOT_OWNER, showInCommandList = false)
+    public static void globalcomDel(final CommandEvent event) {
+        final List<String> commandParts = event.getCommandText()
+            .map(c -> CommandUtils.splitString(c, 1))
+            .orElse(Collections.emptyList());
+        if (commandParts.size() < 1) {
+            event.errorMention("Invalid format for command delete.");
+            return;
+        }
+        final String commandName = commandParts.get(0);
 
-        // check the action syntax first
-        if (commandText.isEmpty() || commandText.get().split(" ", 2).length < 2) {
-            event.mention("Invalid custom command format");
+        // check if the custom command exists
+        if (!event.getCommandManager().commandExists(commandName, true)) {
+            event.errorMention("Did not find a global custom command: " + commandName);
             return;
         }
 
-        final String[] splitCommand = commandText.get().split(" ", 2);
-        final String actionString = splitCommand[0];
-
-        final Optional<Boolean> action = getGlobalCommandAction(actionString);
-
-        if (action.isEmpty()) {
-            event.mention(String.format("\"%s\" is not a valid action for globalcom", actionString));
-            return;
-        }
-
-        if (action.get()) {
-            final String[] addSplit = splitCommand[1].split(" ", 2);
-            if (addSplit.length < 2) {
-                event.mention("Invalid format for command add.");
-                return;
-            }
-            final String commandName = addSplit[0];
-            final String response = addSplit[1];
-
-            event.getSecurityRobot().getCommandManager()
-                .addCustomCommand(commandName, response, CommandLevel.ALL.getLevel());
-            event.mention("Added command: " + commandName);
-
-        } else {
-            final String[] removeSplit = splitCommand[1].split(" ", 1);
-            if (removeSplit.length < 1) {
-                event.mention("Invalid format for split command");
-                return;
-            }
-            final String commandName = removeSplit[0];
-            event.getSecurityRobot().getCommandManager()
-                .delCustomCommand(commandName);
-            event.mention("Removed command: " + commandName);
-        }
+        event.getSecurityRobot().getCommandManager()
+            .delCustomCommand(commandName);
+        event.successMention("Removed global command: " + commandName);
     }
 
-    private Optional<Boolean> getGlobalCommandAction(final String action) {
-        if ("add".equalsIgnoreCase(action)) {
-            return Optional.of(true);
-        } else if ("del".equalsIgnoreCase(action)) {
-            return Optional.of(false);
+    /**
+     * Add a global custom command.
+     *
+     * Syntax: [p]globalcom add {commandName} {response string}
+     * @param event Command event which triggered the command.
+     */
+    @ChatCommand(value = "globalcom add", level = CommandLevel.BOT_OWNER, showInCommandList = false)
+    public static void globalcomAdd(final CommandEvent event) {
+        final List<String> commandResponse = event.getCommandText()
+            .map(c -> CommandUtils.splitString(c, 2))
+            .orElse(Collections.emptyList());
+
+        if (commandResponse.size() < 2) {
+            event.errorMention("Invalid format for command add.");
+            return;
         }
-        return Optional.empty();
+        final String commandName = commandResponse.get(0);
+        final String response = commandResponse.get(1);
+
+        // check if the command exists
+        if (event.getCommandManager().commandExists(commandName, false)) {
+            event.errorMention("A global with that name or alias already exists");
+            return;
+        }
+
+        event.getSecurityRobot().getCommandManager()
+            .addCustomCommand(commandName, response, CommandLevel.ALL.getLevel());
+        event.successMention("Added global command: " + commandName);
     }
 }

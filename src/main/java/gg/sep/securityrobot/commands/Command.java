@@ -1,8 +1,11 @@
 package gg.sep.securityrobot.commands;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -11,6 +14,7 @@ import com.google.common.base.Objects;
 import com.google.common.base.Stopwatch;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
 
 import gg.sep.securityrobot.commands.handlers.custom.CustomCommandMetadata;
 
@@ -19,6 +23,7 @@ import gg.sep.securityrobot.commands.handlers.custom.CustomCommandMetadata;
  */
 @Builder
 @Getter
+@Log4j2
 public class Command {
 
     private String name;
@@ -72,6 +77,34 @@ public class Command {
     }
 
     /**
+     * Builds all of the command tree options which can trigger a command, and handles sub-commands.
+     *
+     * For example, if a command string is: "points add" and has aliases of "gold, rewards", this
+     * method will produce a set containing these ordered lists:
+     *
+     *    1. [points, add]
+     *    2. [gold, add]
+     *    3. [rewards, add]
+     *
+     * This effectively generates a completely unique signature for the command.
+     * @return Set of all possible command branches, including aliases.
+     */
+    public Set<List<String>> getCommandTree() {
+        final Set<List<String>> commandTree = new HashSet<>();
+        final String[] splitMainCommand = getName().split(" ");
+
+        for (final String trigger : getTriggerStrings()) {
+            final List<String> triggerList = new LinkedList<>();
+            triggerList.add(trigger);
+            if (splitMainCommand.length > 1) {
+                triggerList.addAll(Arrays.asList(Arrays.copyOfRange(splitMainCommand, 1, splitMainCommand.length)));
+            }
+            commandTree.add(triggerList);
+        }
+        return commandTree;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -80,7 +113,7 @@ public class Command {
             return false;
         }
         final Command o = (Command) other;
-        return o.getName().equals(this.getName()) && o.getAliases().equals(this.getAliases());
+        return o.getCommandTree().equals(this.getCommandTree());
     }
 
     /**
@@ -88,7 +121,7 @@ public class Command {
      */
     @Override
     public int hashCode() {
-        return Objects.hashCode(this.getName(), this.getAliases());
+        return Objects.hashCode(this.getCommandTree());
     }
 
     /**
@@ -122,12 +155,18 @@ public class Command {
     }
 
     /**
-     * Returns all possible trigger strings for a command (name and aliases).
+     * Returns all possible FIRST word trigger strings. This should ONLY be used in the context of
+     * custom commands.
      * @return All possible trigger strings for a command.
      */
     public Set<String> getTriggerStrings() {
+        if (!this.isCustom()) {
+            log.fatal("getTriggerStrings called on a non-custom command. " +
+                "This should never happen and is NOT safe. Command: {}", this.getName());
+        }
         final Set<String> thisAliases = new HashSet<>(this.aliases);
-        thisAliases.add(this.getName());
+        final String mainCommand = getName().split(" ")[0];
+        thisAliases.add(mainCommand);
         return thisAliases;
     }
 

@@ -7,11 +7,13 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -42,7 +44,9 @@ public class CommandManager {
     private final SecurityRobot securityRobot;
     private final JedisPool jedisPool;
     @Getter private Set<Command> allCommands = new HashSet<>();
-    @Getter private Map<String, Command> commandTriggers = new HashMap<>();
+    @Getter private Map<List<String>, Command> commandTriggers = new HashMap<>();
+
+    @Getter private Map<String, Map> newTriggers = new HashMap<>();
 
     /**
      * Construct an instance for the specified Bot class.
@@ -57,15 +61,35 @@ public class CommandManager {
 
         // get built in bot commands and map each of the triggers to the command
         final Set<Command> builtInCommands = getBuiltInCommands();
-        builtInCommands.forEach(c -> c.getTriggerStrings().forEach(t -> commandTriggers.put(t, c)));
+        builtInCommands.forEach(c -> c.getCommandTree().forEach(t -> commandTriggers.put(t, c)));
 
         // get all custom commands and check for collisions with the built in
         // built in commands will always win
         final Set<Command> customCommands = removeDuplicates(builtInCommands, getCustomCommands());
-        customCommands.forEach(c -> c.getTriggerStrings().forEach(t -> commandTriggers.put(t, c)));
+        customCommands.forEach(c -> c.getCommandTree().forEach(t -> commandTriggers.put(t, c)));
 
         allCommands.addAll(builtInCommands);
         allCommands.addAll(customCommands);
+    }
+
+    /**
+     * Checks if a command currently exists by its name or one of its aliases.
+     * @param commandName Name or alias of the command. Will be compared against other names and aliases.
+     * @param matchCustom If set to {@code true}, will only check custom commands. If {@code false}, all
+     *                    commands are checked.
+     * @return Whether the command currently exists based on the criteria.
+     */
+    public boolean commandExists(final String commandName, final boolean matchCustom) {
+        Stream<Map.Entry<List<String>, Command>> stream = commandTriggers.entrySet().stream()
+            .filter(e -> e.getKey().get(0).equalsIgnoreCase(commandName));
+
+        if (matchCustom) {
+            stream = stream.filter(e -> e.getValue().isCustom());
+        }
+        final List<Command> existingCommands = stream
+            .map(Map.Entry::getValue)
+            .collect(Collectors.toList());
+        return (!existingCommands.isEmpty());
     }
 
     /**
@@ -92,7 +116,7 @@ public class CommandManager {
         final CustomCommandMetadata commandMetadata = parseMetadata(cleanName, metadata);
         final Command command = Command.fromCommandMetadata(commandMetadata);
         allCommands.add(command);
-        command.getTriggerStrings().forEach(t -> commandTriggers.put(t, command));
+        command.getCommandTree().forEach(t -> commandTriggers.put(t, command));
     }
 
     /**
@@ -109,11 +133,12 @@ public class CommandManager {
         }
         // remove it from the command set
         final Optional<Command> curCommand = allCommands.stream()
+            .filter(Command::isCustom) // only delete custom commandsl,,sz
             .filter(c -> c.getTriggerStrings().contains(cleanName))
             .findFirst();
         // remove all the aliases and the command
         if (curCommand.isPresent()) {
-            curCommand.get().getTriggerStrings().forEach(t -> commandTriggers.remove(t));
+            curCommand.get().getCommandTree().forEach(t -> commandTriggers.remove(t));
             allCommands.remove(curCommand.get());
         }
     }
@@ -146,11 +171,6 @@ public class CommandManager {
             }
         }
         return customCommands;
-    }
-
-    private boolean customCommandIsDuplicate(final String commandName) {
-        final String cleanName = commandName.trim().toLowerCase();
-        return commandTriggers.containsKey(cleanName);
     }
 
     private Set<Command> removeDuplicates(final Set<Command> builtIn, final Set<Command> custom) {
@@ -211,11 +231,20 @@ public class CommandManager {
         }
 
         final String[] splitMsg = message.getMessage().split(" ");
-        if (splitMsg.length > 0) {
-            final String commandStr = splitMsg[0]
-                .replaceFirst("\\" + SecurityRobot.COMMAND_PREFIX, "")
-                .trim().toLowerCase();
-            return Optional.ofNullable(commandTriggers.get(commandStr));
+        final List<String> commandTree = new LinkedList<>();
+
+        for (int i = 0; i < splitMsg.length; i++) {
+            String searchMsg = splitMsg[i];
+            if (i == 0) {
+                searchMsg = searchMsg
+                    .replaceFirst("\\" + SecurityRobot.COMMAND_PREFIX, "")
+                    .trim().toLowerCase();
+            }
+            commandTree.add(searchMsg);
+
+            if (commandTriggers.containsKey(commandTree)) {
+                return Optional.ofNullable(commandTriggers.get(commandTree));
+            }
         }
         return Optional.empty();
     }
